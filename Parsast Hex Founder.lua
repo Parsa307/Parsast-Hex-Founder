@@ -1,115 +1,109 @@
 local gg = gg
+
+-- Function to gather memory ranges for libraries and filter out unwanted ones
 function GetResults()
     gg.clearResults()
     gg.setVisible(false)
-    Lib_start_address = gg.getRangesList('*.so')
-    LibChoose = {}
-    LibIndex = 1
-    for i, v in ipairs(Lib_start_address) do
+    local Lib_start_address = gg.getRangesList('*.so')
+    local LibChoose = {}
+
+    -- Filter libraries and present a choice to the user
+    for _, v in ipairs(Lib_start_address) do
         if v.state == "Cd" then
             local result = v.name:match(".+/(.+)")
-            if (result ~= "libil2cpp.so") and (result ~= "libunity.so") and (result ~= "libcrashlytics.so") and (result ~= "libmain.so") then
-                LibChoose[LibIndex] = result
-                LibIndex = LibIndex + 1
+            if not (result == "libil2cpp.so" or result == "libunity.so" or result == "libcrashlytics.so" or result == "libmain.so") then
+                table.insert(LibChoose, result)
             end
         end
     end
-    Chosen = gg.choice(LibChoose, "Choose the lib of mod menu")
-    if not Chosen then return end  -- Exit if no choice was made
 
-    Lib_start_address = gg.getRangesList(LibChoose[Chosen])
-    GetCB = {}
-    CBIndex = 1
-    for i, v in ipairs(Lib_start_address) do
+    local Chosen = gg.choice(LibChoose, "Choose the lib of mod menu")
+    if not Chosen then return end
+
+    local Lib_start_address = gg.getRangesList(LibChoose[Chosen])
+    local GetCB = {}
+
+    -- Iterate through memory addresses and collect data
+    for _, v in ipairs(Lib_start_address) do
         if v.state == "Cd" then
-            while v.start <= v['end'] do
-                GetCB[CBIndex] = { address = v.start, flags = gg.TYPE_DWORD }
-                CBIndex = CBIndex + 1
-                v.start = v.start + 0x4
+            for addr = v.start, v['end'], 0x4 do
+                table.insert(GetCB, { address = addr, flags = gg.TYPE_DWORD })
             end
         end
     end
+
     gg.setRanges(gg.REGION_C_DATA | gg.REGION_CODE_APP)
     gg.loadResults(GetCB)
-    GetPointers = gg.getResults(gg.getResultsCount(), nil, nil, nil, nil, nil, nil, nil, gg.POINTER_EXECUTABLE_WRITABLE | gg.POINTER_EXECUTABLE | gg.POINTER_WRITABLE)
+    local GetPointers = gg.getResults(gg.getResultsCount(), nil, nil, nil, nil, nil, nil, nil, gg.POINTER_EXECUTABLE_WRITABLE | gg.POINTER_EXECUTABLE | gg.POINTER_WRITABLE)
 
     gg.clearResults()
-    for i, v in ipairs(GetPointers) do
+    for _, v in ipairs(GetPointers) do
         v.address = v.value
     end
-    GetPointers = gg.getValues(GetPointers)
-    
-    KeepChecking(GetPointers)
+    KeepChecking(gg.getValues(GetPointers))
 end
 
+-- Function to monitor changes in memory values and handle detected changes
 function KeepChecking(refinedResults)
     local valuesToDetect = refinedResults
     gg.setVisible(false)
-    while gg.isVisible() == false do
+
+    while not gg.isVisible() do
         gg.toast("Detecting Values")
         local valuesToDetectSecond = gg.getValues(valuesToDetect)
-        local wasDifferent = false
-        local changedValues = ""
         local changedValuesList = {}
-        local changeCounter = 1
 
+        -- Check for changes in detected memory values
         for i, v in ipairs(valuesToDetect) do
-            if valuesToDetect[i].value ~= valuesToDetectSecond[i].value then
-                changedValuesList[changeCounter] = {
-                    address = valuesToDetect[i].address,
-                    flags = valuesToDetect[i].flags,
+            if v.value ~= valuesToDetectSecond[i].value then
+                table.insert(changedValuesList, {
+                    address = v.address,
+                    flags = v.flags,
                     newHex = valuesToDetectSecond[i].value
-                }
-                changeCounter = changeCounter + 1
-                wasDifferent = true
+                })
             end
         end
 
-        if wasDifferent then
-            changedValues = "Some values were detected\n\n"
+        -- If changes are detected, process them
+        if #changedValuesList > 0 then
+            local changedValues = "Some values were detected\n\n"
             gg.loadResults(changedValuesList)
-
             local gettedValue = GetAddress(checkAndReturn())
+
+            -- Format and display the changed values
             for i, v in ipairs(gettedValue) do
-                if not changedValuesList[i].newHex then
-                    changedValuesList[i].newHex = 111111
-                end
-                local HexValue1 = string.format("%X", changedValuesList[i].newHex)
-                HexValue1 = littleEndianToBigEndian(HexValue1)
-                HexValue1 = HexValue1:gsub('(..)', '%1 ')
-                changedValues = changedValues .. "Offset: " .. gettedValue[i].offset .. "\nNew Hex: " .. HexValue1 .. "\n\n"
+                local HexValue1 = string.format("%08X", changedValuesList[i].newHex or 0x111111)
+                HexValue1 = littleEndianToBigEndian(HexValue1):sub(9):gsub('(..)', '%1 '):gsub('%s$', '')
+                local Offset = "0x" .. string.upper(v.offset:sub(3))
+                changedValues = changedValues .. string.format("Offset: %s\nNew Hex: %s\n\n", Offset, HexValue1)
             end
-            valuesToDetect = valuesToDetectSecond
+
+            -- Allow the user to choose what to do with the results
             local choose = gg.alert(changedValues, "Continue", "Save", "Exit")
-
-            if choose == 2 then
+            if choose == 2 then 
                 gg.copyText(changedValues, false)
-                gg.addListItems(changedValuesList)
+                gg.addListItems(changedValuesList) 
             end
-
-            if choose == 3 then
-                gg.clearResults()
-                gg.setVisible(true)
-                os.exit()
+            if choose == 3 then 
+                gg.clearResults() 
+                gg.setVisible(true) 
+                os.exit() 
             end
         end
+
+        valuesToDetect = valuesToDetectSecond
     end
     os.exit()
 end
 
+-- Function to convert a hexadecimal value from little-endian to big-endian
 function littleEndianToBigEndian(hexString)
-    local chunks = {}
-
-    for i = #hexString, 1, -2 do
-        table.insert(chunks, string.sub(hexString, i-1, i))
-    end
-    
-    return table.concat(chunks)
+    return hexString:gsub('(..)(..)(..)(..)', '%4%3%2%1')
 end
 
+-- Function to display the main menu and handle user input
 function UserMenu()
-    firstMenu = gg.choice({"Real Time Show", "Exit"}, nil, "Script Made By Parsast")
-    if firstMenu == nil then return end  -- Exit if no choice was made
+    local firstMenu = gg.choice({"Real Time Show", "Exit"})
     if firstMenu == 1 then
         GetResults()
     elseif firstMenu == 2 then
@@ -117,57 +111,51 @@ function UserMenu()
     end
 end
 
+-- Function to calculate the base address and offsets of detected memory values
 function GetAddress(valueTable)
-    gg.clearResults()
-    FinalOutputSchema = {}
-    for i, v in ipairs(valueTable) do
-        FinalOutputSchema[i] = {
+    local FinalOutputSchema = {}
+    for _, v in ipairs(valueTable) do
+        local libStart = gg.getRangesList(v.lib)[1].start
+        table.insert(FinalOutputSchema, {
             lib = v.lib,
-            offset = v.offset,
-            address = gg.getRangesList(v.lib)[1].start + v.offset,
+            offset = "0x" .. string.upper(v.offset:sub(3)),
+            address = libStart + v.offset,
             flags = gg.TYPE_DWORD
-        }
+        })
     end
     return FinalOutputSchema
 end
 
+-- Function to extract the short name of a library from its full path
 function getShortName(str)
-    local a = str:gsub('.+/', '')
-    if a:find(':') then a = a:gsub(':.+', '') end
-    return a
+    return str:match(".+/(.+)") or str
 end
 
+-- Function to retrieve library names and their base addresses
 function getLibAndBase(var)
     local name, base = {}, {}
-    for i, v in ipairs(var) do
-        if v.type:sub(3, 3) == 'x' then
-            local a = { { address = v.start, flags = 4 } }
-            local a = gg.getValues(a)
-            if a[1].value == 0x464C457F then
-                table.insert(name, getShortName(v.internalName))
-                table.insert(base, v.start)
-            end
+    for _, v in ipairs(var) do
+        if v.type:sub(3, 3) == 'x' and gg.getValues({ { address = v.start, flags = 4 } })[1].value == 0x464C457F then
+            table.insert(name, getShortName(v.internalName))
+            table.insert(base, v.start)
         end
     end
     return name, base
 end
 
+-- Function to calculate the offsets of results relative to their library base
 function checkAndReturn()
     local res = gg.getResults(gg.getResultsCount())
-    local pk = gg.getTargetInfo().packageName
-    local lib = gg.getRangesList('/data/*' .. pk .. '*.so')
-
+    local lib = gg.getRangesList('/data/*' .. gg.getTargetInfo().packageName .. '*.so')
     local name, base = getLibAndBase(lib)
     local t = {}
-    for i, v in ipairs(res) do
-        for a, b in ipairs(lib) do
+
+    for _, v in ipairs(res) do
+        for i, b in ipairs(lib) do
             if v.address >= b.start and v.address < b['end'] then
-                for c, d in ipairs(name) do
-                    local sn = getShortName(b.internalName)
-                    if sn == d then
-                        v.lib = d
-                        v.offset = '0x' .. string.format('%x', v.address - base[c])
-                        table.insert(t, v)
+                for j, d in ipairs(name) do
+                    if getShortName(b.internalName) == d then
+                        table.insert(t, { lib = d, offset = "0x" .. string.upper(string.format('%x', v.address - base[j])) })
                     end
                 end
             end
