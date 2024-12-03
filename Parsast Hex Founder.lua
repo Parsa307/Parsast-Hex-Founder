@@ -17,7 +17,7 @@ function GetResults()
         end
     end
 
-    local Chosen = gg.choice(LibChoose, "Choose the lib of mod menu")
+    local Chosen = gg.choice(LibChoose, "Choose the lib of mod menu:")
     if not Chosen then return end
 
     local Lib_start_address = gg.getRangesList(LibChoose[Chosen])
@@ -103,7 +103,7 @@ end
 
 -- Function to display the main menu and handle user input
 function UserMenu()
-    local firstMenu = gg.choice({"Real Time Show", "Exit"})
+    local firstMenu = gg.choice({"Real Time Show", "Exit"}, "Main Menu")
     if firstMenu == 1 then
         GetResults()
     elseif firstMenu == 2 then
