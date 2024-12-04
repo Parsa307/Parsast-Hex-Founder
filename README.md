@@ -30,7 +30,7 @@ Here are some screenshots showcasing the functionality of the script:
 ### Detected Values
 ![Script Screenshot 3](script_screenshot_3.png)
 
-### Save or Exit Options
+### When Multiple Offsets Are Detected
 ![Script Screenshot 4](script_screenshot_4.png)
 
 > **⚠ DISCLAIMER**
