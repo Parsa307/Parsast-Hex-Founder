@@ -11,10 +11,16 @@ function GetResults()
     for _, v in ipairs(Lib_start_address) do
         if v.state == "Cd" then
             local result = v.name:match(".+/(.+)")
-            if not (result == "libil2cpp.so" or result == "libunity.so" or result == "libcrashlytics.so" or result == "libmain.so") then
+            if not (result == "libil2cpp.so" or result == "libunity.so" or result == "libcrashlytics.so" or result == "libmain.so" or result == "libFirebaseCppApp-12_2_0.so") then
                 table.insert(LibChoose, result)
             end
         end
+    end
+
+    -- Check if no suitable libraries are found
+    if #LibChoose == 0 then
+        gg.alert("No suitable libraries found.")
+        return
     end
 
     local Chosen = gg.choice(LibChoose, "Choose the lib of mod menu:")
@@ -66,7 +72,7 @@ function KeepChecking(refinedResults)
 
         -- If changes are detected, process them
         if #changedValuesList > 0 then
-            local changedValues = "Some values were detected\n\n"
+            local changedValues = "Some values were detected\n"
             gg.loadResults(changedValuesList)
             local gettedValue = GetAddress(checkAndReturn())
 
@@ -75,14 +81,17 @@ function KeepChecking(refinedResults)
                 local HexValue1 = string.format("%08X", changedValuesList[i].newHex or 0x111111)
                 HexValue1 = littleEndianToBigEndian(HexValue1):sub(9):gsub('(..)', '%1 '):gsub('%s$', '')
                 local Offset = "0x" .. string.upper(v.offset:sub(3))
-                changedValues = changedValues .. string.format("Offset: %s\nNew Hex: %s\n\n", Offset, HexValue1)
+                if i > 1 then
+                    changedValues = changedValues .. "\n\n"
+                end
+                changedValues = changedValues .. string.format("Offset: %s\nHex: %s", Offset, HexValue1)
             end
 
             -- Allow the user to choose what to do with the results
-            local choose = gg.alert(changedValues, "Continue", "Save", "Exit")
+            local choose = gg.alert(changedValues, "Continue", "Copy", "Exit")
             if choose == 2 then 
                 gg.copyText(changedValues, false)
-                gg.addListItems(changedValuesList) 
+                gg.clearResults()
             end
             if choose == 3 then 
                 gg.clearResults() 
