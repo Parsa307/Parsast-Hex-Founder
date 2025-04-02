@@ -23,7 +23,7 @@ function GetResults()
         return
     end
 
-    local Chosen = gg.choice(LibChoose, "Choose the lib of mod menu:")
+    local Chosen = gg.choice(LibChoose, "Choose the lib of the mod menu:")
     if not Chosen then return end
 
     local Lib_start_address = gg.getRangesList(LibChoose[Chosen])
@@ -72,7 +72,7 @@ function KeepChecking(refinedResults)
 
         -- If changes are detected, process them
         if #changedValuesList > 0 then
-            local changedValues = "Some values were detected\n"
+            local changedValues = "Some values were detected!\n"
             gg.loadResults(changedValuesList)
             local gettedValue = GetAddress(checkAndReturn())
 
