@@ -55,7 +55,7 @@ function KeepChecking(refinedResults)
     gg.setVisible(false)
 
     while not gg.isVisible() do
-        gg.toast("Detecting Values")
+        gg.toast("Detecting values...")
         local valuesToDetectSecond = gg.getValues(valuesToDetect)
         local changedValuesList = {}
 
