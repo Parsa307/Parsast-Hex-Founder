@@ -11,7 +11,7 @@ function GetResults()
     for _, v in ipairs(Lib_start_address) do
         if v.state == "Cd" then
             local result = v.name:match(".+/(.+)")
-            if not (result == "libil2cpp.so" or result == "libunity.so" or result == "libcrashlytics.so" or result == "libmain.so" or result == "libFirebaseCppApp-12_2_0.so") then
+            if not (result == "libil2cpp.so" or result == "libunity.so" or result == "libcrashlytics.so" or result == "libcrashlytics-common.so" or result == "libmain.so") then
                 table.insert(LibChoose, result)
             end
         end
