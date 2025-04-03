@@ -6,13 +6,17 @@ function GetResults()
     gg.setVisible(false)
     local Lib_start_address = gg.getRangesList('*.so')
     local LibChoose = {}
+    local uniqueLibs = {}
 
     -- Filter libraries and present a choice to the user
     for _, v in ipairs(Lib_start_address) do
         if v.state == "Cd" then
             local result = v.name:match(".+/(.+)")
             if not (result == "libil2cpp.so" or result == "libunity.so" or result == "libcrashlytics.so" or result == "libcrashlytics-common.so" or result == "libmain.so") then
-                table.insert(LibChoose, result)
+                if not uniqueLibs[result] then
+                    uniqueLibs[result] = true
+                    table.insert(LibChoose, result)
+                end
             end
         end
     end
