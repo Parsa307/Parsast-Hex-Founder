@@ -116,7 +116,7 @@ end
 
 -- Function to display the main menu and handle user input
 function UserMenu()
-    local firstMenu = gg.choice({"Real Time Show", "Exit"}, "Main Menu")
+    local firstMenu = gg.choice({"Real Time Detection", "Exit"}, "Main Menu")
     if firstMenu == 1 then
         GetResults()
     elseif firstMenu == 2 then
